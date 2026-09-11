@@ -4,6 +4,50 @@ An open-source implementation of an AirPlay mirroring server for the Raspberry P
 The goal is to make it run smoothly even on a Raspberry Pi Zero.
 
 
+# Quickstart
+
+Build and start `rpiplay` — an AirPlay target appears on your network under the
+name of the server (default "RPiPlay"):
+
+```bash
+rpiplay
+```
+
+Both devices must be on the same network (and mDNS/Bonjour traffic must be
+allowed — check your router's "AP isolation" setting if the server does not
+show up).
+
+## iPhone / iPad
+
+1. Open **Control Center → Screen Mirroring** and select **RPiPlay**.
+2. Screen (with its audio) mirrors to the Pi — e.g. play YouTube Music or any
+   other app while mirroring; its audio is streamed to the Pi automatically.
+
+Notes:
+
+* Use *Screen Mirroring*, not the in-app AirPlay icon: audio-only AirPlay
+  (ALAC) streams are not supported.
+* Alternatively, pair the Pi in the Bluetooth settings and use it as an A2DP
+  speaker — no mirroring needed (the Pi must have Bluetooth audio set up, see
+  the Bluetooth section below).
+
+## Android
+
+Android has no built-in AirPlay support, so pick one of these:
+
+* **Bluetooth (recommended, no app needed)** — pair the Pi in the Bluetooth
+  settings and play any music app; the Pi acts as an A2DP speaker. The Pi-side
+  setup is described in the Bluetooth section below.
+* **A mirroring sender app** — install an app that discovers AirPlay receivers
+  (e.g. "Cast to TV" or LetsView), select RPiPlay and mirror. Support varies
+  by app and vendor; test before relying on it.
+* Samsung **Smart View does not work** — it speaks Miracast/Google Cast/DLNA,
+  not AirPlay.
+
+Audio on the Pi itself requires an audio output — see the external DAC section
+below for HiFiBerry boards.
+
+
 # State
 
 Screen mirroring and audio works for iOS 9 or newer. Recent macOS versions also seem to be compatible. The GPU is used for decoding the h264 video stream. The Pi has no hardware acceleration for audio (AirPlay mirroring uses AAC), so the FDK-AAC decoder is used for that.
