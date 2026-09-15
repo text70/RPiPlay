@@ -21,6 +21,7 @@ Deps (Debian/Ubuntu): `cmake libavahi-compat-libdnssd-dev libplist-dev libssl-de
 - The ALSA renderer exists because the OMX `audio_render` component can only output to "local"/"hdmi" — external I2S DACs (HiFiBerry) are only reachable through ALSA. With `-a analog` it auto-selects a HiFiBerry card; `-a` also accepts explicit ALSA device names (e.g. `sysdefault:CARD=sndrpihifiberrydacplus`).
 - GStreamer renderer modern-Pi behaviour: video decoder auto-selects `v4l2h264dec` (Pi HW decode, bcm2835_codec) vs `decodebin` (software / Pi 5); `RPIPLAY_VDECODER`/`RPIPLAY_VIDEOSINK`/`RPIPLAY_AUDIOSINK`/`RPIPLAY_BT709` env vars override. On Pi 5 (no OpenMAX, no HW H.264) gstreamer is the only renderer.
 - Building locally on Ubuntu 24.04: `gstreamer-1.0.pc` requires `libunwind`, but `libunwind-18-dev` ships no `.pc` — pkg-config then fails on the whole gstreamer chain. Workaround: a user-local `libunwind.pc` in a dir passed via `PKG_CONFIG_PATH` (or `sudo apt-get install -y libunwind-dev`).
+- `deploy/` contains the full provisioning kit for the reference deployment (Pi Zero 2 W + InnoMaker PCM5122 DAC): `provision.sh`, a patched `snd-soc-pcm512x` kernel module (Raspberry Pi OS kernels ≥ 6.12 fail PCM512x opens with -22 via the runtime-PM path — see `deploy/README.md`), systemd units, and BT pairing agent. On Pi OS, PCM5122 DAC HATs need this module; stock `hifiberry-dacplus-std` fails with `ASoC error (-22)` at open.
 
 ## Vendored third-party code — don't reformat or casually edit
 
