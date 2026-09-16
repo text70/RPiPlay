@@ -22,7 +22,7 @@ sudo apt-get install -y build-essential cmake pkg-config git rsync \
     libssl-dev libplist-dev libasound2-dev libavahi-compat-libdnssd-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-libav gstreamer1.0-plugins-bad gstreamer1.0-plugins-good \
-    gstreamer1.0-tools pipewire-alsa
+    gstreamer1.0-tools pipewire-alsa bluez-alsa-utils
 # Kernel headers may already ship with some images (e.g. /usr/src prepopulated);
 # only install the package if no matching build dir exists for the running kernel.
 if [ ! -d "/lib/modules/$KVER/build" ]; then
@@ -83,8 +83,14 @@ sudo install -m 644 "$REPO/deploy/systemd/bt-agent.service" \
 sudo mkdir -p /etc/systemd/system/rpiplay.service.d
 sudo install -m 644 "$REPO/deploy/systemd/rpiplay-pipewire.conf" \
     /etc/systemd/system/rpiplay.service.d/pipewire.conf
+# BlueALSA: A2DP sink endpoints + player routing BT audio into PipeWire
+sudo install -m 644 "$REPO/deploy/systemd/bluealsa-a2dp.conf" \
+    /etc/systemd/system/bluealsa.service.d/a2dp.conf
+sudo install -m 644 "$REPO/deploy/systemd/bluealsa-aplay.service" \
+    /etc/systemd/system/bluealsa-aplay.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now rpiplay.service bt-agent.service
+sudo systemctl enable --now rpiplay.service bt-agent.service \
+    bluealsa.service bluealsa-aplay.service
 
 echo "== [6/6] Enabling user lingering (PipeWire at boot, headless) =="
 sudo loginctl enable-linger "$USER"
