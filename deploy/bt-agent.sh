@@ -3,9 +3,13 @@
 # a NoInputNoOutput pairing agent registered, so phones can find and pair
 # with the Pi headlessly.
 #
-# The initial sleep lets bluetoothd finish settling after boot; without it
-# the power-on command can race the daemon and silently fail.
+# Some images ship the adapter rfkill-soft-blocked and without the rfkill
+# tool; clear the block directly via sysfs. The initial sleep lets
+# bluetoothd finish settling after boot.
 sleep 3
+for rf in /sys/class/rfkill/rfkill*; do
+    [ "$(cat "$rf/type" 2>/dev/null)" = "bluetooth" ] && echo 0 > "$rf/soft" 2>/dev/null
+done
 
 {
 	printf 'power on\npairable on\ndiscoverable on\ndiscoverable-timeout 0\nagent NoInputNoOutput\ndefault-agent\n'
