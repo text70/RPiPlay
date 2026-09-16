@@ -13,6 +13,12 @@ name of the server (default "RPiPlay"):
 rpiplay
 ```
 
+> **Building a complete Bluetooth-speaker + AirPlay box with a DAC HAT?**
+> Skip the manual work: `deploy/provision.sh` sets everything up in one run.
+> See [deploy/README.md](deploy/README.md) for the automated quickstart and a
+> full step-by-step manual setup (packages, DAC overlay, patched driver,
+> services, phone pairing).
+
 Both devices must be on the same network (and mDNS/Bonjour traffic must be
 allowed — check your router's "AP isolation" setting if the server does not
 show up).
