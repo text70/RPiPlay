@@ -13,8 +13,8 @@ the DAC.
 
 # Quick start (automated)
 
-1. Flash **Raspberry Pi OS Lite (64-bit)**, boot it, connect WiFi, enable SSH
-2. Copy this repository to the Pi and run the provisioner:
+1. Flash **Raspberry Pi OS Lite (64-bit)** using the latest version of 'rpi-imager` setting up username password, wifi and enable SSH, wait for boot to finish.
+2. Copy this repository to the Pi using `rsync`, SSH in and run the provisioner script:
 
 ```bash
 rsync -a --exclude build --exclude .git ./ pi@<pi-address>:RPiPlay/
