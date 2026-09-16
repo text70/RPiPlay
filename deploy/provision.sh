@@ -19,11 +19,16 @@ echo "== target kernel: $KVER =="
 echo "== [1/6] Installing system packages =="
 sudo apt-get update
 sudo apt-get install -y build-essential cmake pkg-config git rsync \
-    raspberrypi-kernel-headers \
     libssl-dev libplist-dev libasound2-dev libavahi-compat-libdnssd-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-libav gstreamer1.0-plugins-bad gstreamer1.0-plugins-good \
     gstreamer1.0-tools pipewire-alsa
+# Kernel headers may already ship with some images (e.g. /usr/src prepopulated);
+# only install the package if no matching build dir exists for the running kernel.
+if [ ! -d "/lib/modules/$KVER/build" ]; then
+    sudo apt-get install -y raspberrypi-kernel-headers
+fi
+[ -d "/lib/modules/$KVER/build" ] || { echo "ERROR: no kernel build dir for $KVER"; exit 1; }
 
 echo "== [2/6] Deploying rpiplay source and building =="
 rsync -a --delete --exclude build --exclude .git --exclude deploy "$REPO/" "$HOME/RPiPlay/"
