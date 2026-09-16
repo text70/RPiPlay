@@ -205,21 +205,39 @@ sender that mirrors the screen (or its audio) to the RPiPlay device.
 
 AirPlay mirroring requires a sender app on Android. If you just want music from a
 phone on the DAC, the Pi can also act as a Bluetooth speaker — that needs no
-sender app at all and works with every phone natively:
+sender app at all and works with every phone natively.
 
-1. Make the Pi an A2DP sink: with PipeWire (default on Raspberry Pi OS Bookworm
-   and later), install `libspa-0.2-bluetooth`, run `bluetoothctl`, then
-   `power on`, `agent NoInputNoOutput`, `default-agent`, `discoverable on`,
-   `pairable on`, and pair the phone. Mark it trusted
-   (`trust <device-address>`) so it reconnects automatically.
-2. Keep the agent registered across reboots with a small systemd service that
-   runs `bluetoothctl` with `agent NoInputNoOutput` (see any BlueZ A2DP sink
-   guide), and set `AutoEnable=true` in `/etc/bluetooth/main.conf`.
-3. Route the stream: the phone's audio appears as a PipeWire source and is
-   played through the default sink — select the DAC with
-   `wpctl set-default <id>` if it is not picked automatically.
+Two software options:
 
-This is OS-level setup, independent of RPiPlay; both paths can coexist.
+**BlueALSA (recommended — lightweight, reliable on the Pi Zero):**
+
+```bash
+sudo apt-get install -y bluez-alsa-utils
+sudo tee /etc/systemd/system/bluealsa.service.d/a2dp.conf >/dev/null <<'EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/bluealsa -p a2dp-sink
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now bluealsa
+# play received audio through the DAC:
+sudo systemctl enable --now bluealsa-aplay
+```
+
+`bluealsa-aplay` routes the decoded Bluetooth audio to the ALSA default
+device — with `pipewire-alsa` installed that is PipeWire, so Bluetooth and
+AirPlay mix on the same DAC.
+
+**PipeWire Bluetooth (when the image's bluez5 SPA plugin is intact):**
+install `libspa-0.2-bluetooth`, set
+`bluez5.roles = [ a2dp_sink ]` (and `enable-sbc-xq`, `enable-hw-volume`) in
+the `monitor.bluez.properties` section of the WirePlumber config, and
+restart WirePlumber. Note: on some images this monitor does not register
+A2DP endpoints (verify with `journalctl -u bluetooth | grep -i endpoint`);
+BlueALSA is the dependable fallback.
+
+Both approaches need the Pi made visible once (see `bt-agent`/bluetoothctl
+setup in the deploy kit, `deploy/README.md`) and the phone paired + trusted.
 
 # Global installation
 
