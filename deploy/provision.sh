@@ -36,19 +36,23 @@ mkdir -p "$HOME/RPiPlay/build"
 cmake -S "$HOME/RPiPlay" -B "$HOME/RPiPlay/build" -DCMAKE_BUILD_TYPE=Release
 make -C "$HOME/RPiPlay/build" -j"$(nproc)"
 
-echo "== [3/6] Boot configuration (InnoMaker DAC overlay) =="
+echo "== [3/6] Boot configuration (InnoMaker DAC via allo-boss overlay) =="
 CFG=/boot/firmware/config.txt
 [ -f "$CFG" ] || CFG=/boot/config.txt
-if ! grep -q "hifiberry-dacplus-std" "$CFG"; then
+if ! grep -q "allo-boss-dac-pcm512x-audio" "$CFG"; then
     sudo cp "$CFG" "$CFG.bak"
     sudo tee -a "$CFG" >/dev/null <<'EOF'
 
-# InnoMaker DAC Mini HiHat (PCM5122, HiFiBerry DAC+ compatible)
+# InnoMaker DAC Mini HiHat (PCM5122) via the Allo Boss DAC overlay:
+# the allo-boss machine driver runs the PCM5122 in codec-master mode
+# (the HAT's onboard oscillators) and uses dummy regulators, which
+# avoids the 6.12+ runtime-PM -22 open failure of the hifiberry-dacplus
+# overlays. The resulting card is named "BossDAC".
 dtparam=i2c_arm=on
-dtoverlay=hifiberry-dacplus-std
+dtoverlay=allo-boss-dac-pcm512x-audio
 EOF
 fi
-grep -n "hifiberry" "$CFG"
+grep -n "allo-boss\|hifiberry" "$CFG"
 
 echo "== [4/6] Patched pcm512x kernel module (works around 6.18 runtime-PM -22) =="
 MODDIR="/lib/modules/$KVER/kernel/sound/soc/codecs"

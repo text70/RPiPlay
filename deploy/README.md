@@ -32,10 +32,11 @@ systemd services, and user lingering.
 | `modules/snd-soc-pcm512x-6.18.39+rpt-rpi-v8.ko` | Prebuilt patched module (only loads on that exact kernel) |
 | `pcm512x-fix/` | Patched `pcm512x` source + Makefile + the two patch scripts |
 
-## Why the patched pcm512x module exists
+## Why the patched pcm512x module + the allo-boss overlay exist
 
-On Raspberry Pi OS kernels ≥ 6.12 (verified broken on 6.18.39), opening a
-PCM512x-based sound card fails permanently with:
+On Raspberry Pi OS kernels ≥ 6.12 (verified broken on 6.18.x), opening a
+PCM512x-based sound card bound through the `hifiberry-dacplus*` overlays
+fails permanently with:
 
 ```
 ASoC error (-22): at snd_soc_pcm_component_pm_runtime_get() on pcm512x.1-004d
@@ -44,8 +45,6 @@ ASoC error (-22): at snd_soc_pcm_component_pm_runtime_get() on pcm512x.1-004d
 The codec's runtime resume (`pcm512x_resume` in `sound/soc/codecs/pcm512x.c`)
 fails in `regulator_bulk_enable()`/`regcache_sync()`, and the runtime-PM core
 stores that error, so every subsequent `pm_runtime_get_sync` re-returns -22.
-HATs like the InnoMaker wire AVDD/DVDD/CPVDD straight to the Pi's 3V3 rail,
-so the framework-level "enable" is virtual and the failure is harmless.
 
 The patches:
 1. `patch_pcm512x.py` — `pcm512x_resume` logs-and-continues on those failures
@@ -53,6 +52,21 @@ The patches:
 2. `patch_pcm512x_retry.py` — the boot probe retries the codec reset for ~60 s,
    because some boards clock-stretch the I2C bus while their LDOs settle, and
    the bcm2835 I2C controller cannot handle clock stretching (errata).
+
+**Use the `allo-boss-dac-pcm512x-audio` overlay** (not `hifiberry-dacplus*`):
+the Allo Boss DAC machine driver binds the same PCM5122 at I2C 0x4D but its
+overlay references no supplies (kernel dummy regulators → clean runtime-PM)
+and its master path runs the PCM5122 in codec-master mode with the HAT's
+onboard oscillators — correct for the InnoMaker's hardware design. The
+resulting card is named `BossDAC`.
+
+Two additional caveats found during bring-up:
+* **Keep the HDMI cable unplugged** on the Zero: the connector shell sits
+  next to the header and shorted HAT pins under contact (a power LED went
+  dark when pressing the HAT; unplugging HDMI restored it).
+* After boot the PipeWire sink can appear before the card finishes probing;
+  if the sink list is empty or playback fails with EIO,
+  `systemctl --user restart wireplumber` re-detects the card.
 
 The patched module also restores the **hardware mixer** ("Digital" control on
 the PCM5122), so phone volume works — which the `hifiberry-dac` stub-driver
