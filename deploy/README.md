@@ -51,12 +51,13 @@ sudo apt-get install -y build-essential cmake pkg-config git rsync \
     libssl-dev libplist-dev libasound2-dev libavahi-compat-libdnssd-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-libav gstreamer1.0-plugins-bad gstreamer1.0-plugins-good \
-    gstreamer1.0-tools pipewire-alsa bluez-alsa-utils
+    gstreamer1.0-tools pipewire-alsa bluez-alsa-utils bluez-tools
 ```
 
 * `pipewire-alsa` — routes the ALSA `default` device into PipeWire (this is
   how Bluetooth and AirPlay audio reach the DAC)
 * `bluez-alsa-utils` — the BlueALSA A2DP sink (`bluealsa` + `bluealsa-aplay`)
+* `bluez-tools` — the `bt-agent` pairing daemon used below
 * Kernel headers: needed later for the patched DAC driver. Some images ship
   them already (`/lib/modules/$(uname -r)/build` exists); otherwise:
 
@@ -130,24 +131,27 @@ EOF
 
 ## Step 6 — systemd services
 
+The units below are generated for **your** user/home/uid, so they work on
+any Raspberry Pi OS image regardless of the account name.
+
 **rpiplay** (AirPlay receiver):
 
 ```bash
 sudo tee /etc/default/rpiplay >/dev/null <<'EOF'
 RPIPLAY_ARGS="-vr dummy -ar alsa -a pipewire"
 EOF
-sudo tee /etc/systemd/system/rpiplay.service >/dev/null <<'EOF'
+sudo tee /etc/systemd/system/rpiplay.service >/dev/null <<EOF
 [Unit]
 Description=RPiPlay AirPlay mirroring server
 After=network-online.target avahi-daemon.service
 Wants=network-online.target
 
 [Service]
-User=pi
-WorkingDirectory=/home/pi/RPiPlay/build
+User=$(id -un)
+WorkingDirectory=$HOME/RPiPlay/build
 EnvironmentFile=/etc/default/rpiplay
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-ExecStart=/home/pi/RPiPlay/build/rpiplay $RPIPLAY_ARGS
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
+ExecStart=$HOME/RPiPlay/build/rpiplay \$RPIPLAY_ARGS
 Restart=on-failure
 RestartSec=3
 
@@ -188,14 +192,14 @@ sudo tee /etc/systemd/system/bluealsa.service.d/a2dp.conf >/dev/null <<'EOF'
 ExecStart=
 ExecStart=/usr/bin/bluealsa -p a2dp-sink
 EOF
-sudo tee /etc/systemd/system/bluealsa-aplay.service >/dev/null <<'EOF'
+sudo tee /etc/systemd/system/bluealsa-aplay.service >/dev/null <<EOF
 [Unit]
 Description=BlueALSA A2DP player (BT audio to PipeWire)
 After=bluealsa.service bluetooth.service
 Requires=bluealsa.service
 
 [Service]
-Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
 ExecStart=/usr/bin/bluealsa-aplay
 Restart=always
 RestartSec=3

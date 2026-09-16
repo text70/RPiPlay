@@ -22,7 +22,7 @@ sudo apt-get install -y build-essential cmake pkg-config git rsync \
     libssl-dev libplist-dev libasound2-dev libavahi-compat-libdnssd-dev \
     libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-libav gstreamer1.0-plugins-bad gstreamer1.0-plugins-good \
-    gstreamer1.0-tools pipewire-alsa bluez-alsa-utils
+    gstreamer1.0-tools pipewire-alsa bluez-alsa-utils bluez-tools
 # Kernel headers may already ship with some images (e.g. /usr/src prepopulated);
 # only install the package if no matching build dir exists for the running kernel.
 if [ ! -d "/lib/modules/$KVER/build" ]; then
@@ -74,20 +74,56 @@ fi
 sudo depmod -a "$KVER"
 
 echo "== [5/6] Installing systemd services =="
-sudo install -m 644 "$REPO/deploy/systemd/rpiplay.service.pi" \
-    /etc/systemd/system/rpiplay.service
+# The units are generated with the actual user/home/uid, so provisioning
+# works on images where the account is not named "pi".
+TGT_USER="$(id -un)"
+TGT_HOME="$HOME"
+TGT_UID="$(id -u)"
+
 sudo install -m 644 "$REPO/deploy/etc-default-rpiplay" /etc/default/rpiplay
 sudo install -m 755 "$REPO/deploy/bt-agent.sh" /usr/local/sbin/bt-agent.sh
 sudo install -m 644 "$REPO/deploy/systemd/bt-agent.service" \
     /etc/systemd/system/bt-agent.service
-sudo mkdir -p /etc/systemd/system/rpiplay.service.d
-sudo install -m 644 "$REPO/deploy/systemd/rpiplay-pipewire.conf" \
-    /etc/systemd/system/rpiplay.service.d/pipewire.conf
+
+sudo tee /etc/systemd/system/rpiplay.service >/dev/null <<EOF
+[Unit]
+Description=RPiPlay AirPlay mirroring server
+After=network-online.target avahi-daemon.service
+Wants=network-online.target
+
+[Service]
+User=${TGT_USER}
+WorkingDirectory=${TGT_HOME}/RPiPlay/build
+EnvironmentFile=/etc/default/rpiplay
+Environment=XDG_RUNTIME_DIR=/run/user/${TGT_UID}
+ExecStart=${TGT_HOME}/RPiPlay/build/rpiplay \$RPIPLAY_ARGS
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # BlueALSA: A2DP sink endpoints + player routing BT audio into PipeWire
+sudo tee /etc/systemd/system/bluealsa-aplay.service >/dev/null <<EOF
+[Unit]
+Description=BlueALSA A2DP player (BT audio to PipeWire)
+After=bluealsa.service bluetooth.service
+Requires=bluealsa.service
+
+[Service]
+Environment=XDG_RUNTIME_DIR=/run/user/${TGT_UID}
+ExecStart=/usr/bin/bluealsa-aplay
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mkdir -p /etc/systemd/system/bluealsa.service.d
 sudo install -m 644 "$REPO/deploy/systemd/bluealsa-a2dp.conf" \
     /etc/systemd/system/bluealsa.service.d/a2dp.conf
-sudo install -m 644 "$REPO/deploy/systemd/bluealsa-aplay.service" \
-    /etc/systemd/system/bluealsa-aplay.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now rpiplay.service bt-agent.service \
     bluealsa.service bluealsa-aplay.service
